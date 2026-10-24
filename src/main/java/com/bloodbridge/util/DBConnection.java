@@ -3,49 +3,39 @@ package com.bloodbridge.util;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Properties;
 
 /**
- * Utility class for obtaining a JDBC connection to the MySQL database.
- * The database connection properties are loaded from a class‑path resource
- * {@code db.properties}. The file should be placed under {@code src/main/resources}
- * and is intentionally NOT committed to version control – it contains
- * credentials for local development only.
+ * DBConnection provides a single method to obtain a JDBC Connection.
+ * The connection parameters are loaded from environment variables:
+ *   - DB_URL (e.g. jdbc:mysql://localhost:3306/bloodbridge?useSSL=false&serverTimezone=UTC)
+ *   - DB_USER
+ *   - DB_PASSWORD
+ *
+ * The class lazily loads the driver and rethrows any SQLException as a RuntimeException
+ * so that calling code can handle it appropriately.
  */
 public class DBConnection {
-    private static final String PROPERTIES_FILE = "/db.properties";
-    private static String url;
-    private static String user;
-    private static String password;
-    private static volatile boolean initialized = false;
+    private static final String URL = System.getenv("DB_URL");
+    private static final String USER = System.getenv("DB_USER");
+    private static final String PASSWORD = System.getenv("DB_PASSWORD");
 
-    private static void init() throws SQLException {
-        if (initialized) {
-            return;
-        }
-        try (var stream = DBConnection.class.getResourceAsStream(PROPERTIES_FILE)) {
-            if (stream == null) {
-                throw new SQLException("Database properties file not found: " + PROPERTIES_FILE);
-            }
-            var props = new Properties();
-            props.load(stream);
-            url = props.getProperty("url");
-            user = props.getProperty("user");
-            password = props.getProperty("password");
-            if (url == null || user == null) {
-                throw new SQLException("Missing required DB properties (url, user)");
-            }
-            initialized = true;
-        } catch (Exception e) {
-            throw new SQLException("Failed to load DB properties", e);
+    static {
+        try {
+            // Ensure MySQL driver is loaded
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("MySQL JDBC Driver not found", e);
         }
     }
 
     /**
-     * Returns a new {@link Connection}. Caller is responsible for closing it.
+     * Returns a new JDBC connection.
+     * Caller is responsible for closing the connection.
      */
     public static Connection getConnection() throws SQLException {
-        init();
-        return DriverManager.getConnection(url, user, password);
+        if (URL == null || USER == null || PASSWORD == null) {
+            throw new IllegalStateException("Database connection environment variables (DB_URL, DB_USER, DB_PASSWORD) are not set.");
+        }
+        return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }
