@@ -10,17 +10,19 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.bloodbridge.service.DashboardService;
 
 @WebServlet("/dashboard")
 public class DashboardServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setCharacterEncoding("UTF-8");
-        request.setAttribute("activeRequests", 24);
-        request.setAttribute("urgentRequests", 6);
-        request.setAttribute("verifiedBanks", 18);
-        request.setAttribute("fulfilledRequests", 42);
-        request.setAttribute("requestsFulfilled", 42);
+        DashboardService dashboardService = new DashboardService();
+        java.util.Map<String, Integer> stats = dashboardService.getStatistics();
+        request.setAttribute("activeRequests", stats.getOrDefault("activeRequests", 0));
+        request.setAttribute("urgentRequests", stats.getOrDefault("urgentRequests", 0));
+        request.setAttribute("verifiedBanks", stats.getOrDefault("verifiedBanks", 0));
+        request.setAttribute("fulfilledRequests", stats.getOrDefault("fulfilledRequests", 0));
         List<Map<String, String>> requests = new ArrayList<>();
         requests.add(requestRow("BB-2048", "City General Hospital", "O−", "Urgent", "Awaiting response", "urgent"));
         requests.add(requestRow("BB-2047", "Northside Medical Centre", "AB+", "High", "Partially fulfilled", "progress"));
